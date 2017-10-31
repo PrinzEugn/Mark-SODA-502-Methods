@@ -1,24 +1,15 @@
----
-title: "Mark_SODA_502_Tutorial_Part_1"
-author: "Mark Simpson"
-date: "October 29, 2017"
-output: github_document
----
-
-```{r setup, include = FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-
-library(dplyr, suppressPackageStartupMessages(TRUE))
-
-```
+Mark\_SODA\_502\_Tutorial\_Part\_1
+================
+Mark Simpson
+October 29, 2017
 
 Today I'm going to show you how to make a few simple plots in R using the ICEWS and Phoenix event datasets. For the sake of this tutorial, I created a subset of the datasets that only contains 5 countries in the Caucasus region: Russia, Georgia, Azerbaijan, Armenia, and Turkey.
 
 Note that Phoenix actually consists of three different subsets, New York Times (NYT), BBC Summary of World Broadcasts (SWB), and CIA Foreign Broadcast Information Service (FBIS), while Integrated Crisis Early Warning (ICEWS) is one single dataset.
 
-First, to load the data and do just a little processing with *dplyr* 
+First, to load the data and do just a little processing with *dplyr*
 
-```{r read_data}
+``` r
 #### Read Datasets ####
 
 # NYT
@@ -40,10 +31,10 @@ FBIS <- read.csv(file ="data/FBIS.csv") %>%
 ICEWS <- read.csv(file ="data/ICEWS.csv") %>%
   mutate(date = as.Date(date)) %>%
   mutate(Dataset = "ICEWS")
-
 ```
 
-## Plotting with *ggplot2*
+Plotting with *ggplot2*
+-----------------------
 
 *ggplot2* is both beautiful and terrible. It can produce very nice graphics, but is not super user friendly. *ggplot2* is based off the idea of "grammar of graphics," which is theoretically elegant way of dividing plots into data, visible geometry, and a coordinate system, but is so deep it can be easy to get lost.
 
@@ -51,24 +42,34 @@ ICEWS <- read.csv(file ="data/ICEWS.csv") %>%
 
 Anyway, let's start with a basic histogram showing how many events over time there are in the NYT data. For this, we need to pass ggplot the data, tell it our visual mapping (date should be on the x axis), and then tell it what kind of geometry to make (with a separate function). Also note that y is implicit with a histogram, since it generates the y axis (count).
 
-```{r NYT_histogram_basic}
+``` r
 library(ggplot2, suppressPackageStartupMessages(TRUE))
 
 # Take a look at the fields
 colnames(NYT)
+```
 
+    ##  [1] "eid"           "story_date"    "year"          "month"        
+    ##  [5] "day"           "source"        "source_root"   "source_agent" 
+    ##  [9] "source_others" "target"        "target_root"   "target_agent" 
+    ## [13] "target_others" "code"          "root_code"     "quad_class"   
+    ## [17] "goldstein"     "joined_issues" "lat"           "lon"          
+    ## [21] "placename"     "statename"     "countryname"   "aid"          
+    ## [25] "process"       "date"          "cameo.root"    "Dataset"
+
+``` r
 # NYT data, aes (aesthetic) sets date field as x
 ggplot(NYT, aes(x = date)) + 
   
   # set binwidth to cover 100 days
   geom_histogram( binwidth = 100)
-
 ```
 
-That's cool, but is still missing some important features like a title, and the aesthetic mapping could be better. The following is the type of customization you can do within ggplot. Note that scale_x_date is a specialized ggplot function to modify the display of dates, pretty crazy. Here we are letting ggplot figure out the limits itself, which is important to realize since our datasets have different temporal coverage.
+![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/NYT_histogram_basic-1.png)
 
+That's cool, but is still missing some important features like a title, and the aesthetic mapping could be better. The following is the type of customization you can do within ggplot. Note that scale\_x\_date is a specialized ggplot function to modify the display of dates, pretty crazy. Here we are letting ggplot figure out the limits itself, which is important to realize since our datasets have different temporal coverage.
 
-```{r NYT_histogram_fancy}
+``` r
 ggplot(NYT, aes(x = date)) + 
   
   # set binwidth to cover 100 days, set transparent, blue
@@ -88,12 +89,13 @@ ggplot(NYT, aes(x = date)) +
   # Make the fonts bigger, boldface the title
   theme( title = element_text(size = 14, face = "bold"),
          axis.text = element_text(size = 12) )
-
 ```
+
+![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/NYT_histogram_fancy-1.png)
 
 Note the two dips, one in 1961, and another in 1978. Let's go ahead and zoom in on 1961 by changing our `scale_x_date` chunk to have a specific limit on the time period, and then reducing our `binwidth` to be finer-grained. Note that R wants this as a *date* datatype, requiring us to call `as.Date` to do a quick transform. We can also manipulate the spacing of the dates to better fit the time period.
 
-```{r NYT_histogram_zoom, warning = FALSE}
+``` r
 ggplot(NYT, aes(x = date)) + 
   
   # set binwidth to cover 100 days, set transparent, blue
@@ -114,22 +116,19 @@ ggplot(NYT, aes(x = date)) +
   # Note I changed the angle in element_text
   theme( title = element_text(size = 14, face = "bold"),
          axis.text = element_text( angle = 90) )
-
-
 ```
 
+![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/NYT_histogram_zoom-1.png)
 
 Hm, well that ain't right. That, or nothing happened for big chunks of 1961.
 
 ### Frequency Polgyons
 
-This is just mapping the number of events over time, but we also have event types stored in the cameo.root field (Neutral, Verbal Cooperation/Conflict, and Material Cooperation/Conflict). Since we're dealing with this a lot, we can make a custom color scheme to keep them consistent across the plots. Otherwise, *ggplot* will assign colors. 
+This is just mapping the number of events over time, but we also have event types stored in the cameo.root field (Neutral, Verbal Cooperation/Conflict, and Material Cooperation/Conflict). Since we're dealing with this a lot, we can make a custom color scheme to keep them consistent across the plots. Otherwise, *ggplot* will assign colors.
 
 To map these to any color, all we have to do is tell ggplot that we want color mapped to cameo.root in the initial `aes()` block. If we want custom colors, we can make a variable to store the color values, then assign them with `scale_color_manual`
 
-
-```{r Event_Color}
-
+``` r
 # Manually set colors for event types, called in ggmap later
 event.color <- c("Neutral" = "gray60", 
           "Verbal cooperation" = "steelblue1",
@@ -138,11 +137,9 @@ event.color <- c("Neutral" = "gray60",
           "Material conflict" = "firebrick2")
 ```
 
-
 We could try to plot the bar histograms like the total example, but since the data will overlap, the bars will cover each other up. It's better use use a line equivalent, which in this context is confusingly called a *frequency polygon*.
 
-
-```{r NYT_histogram_type}
+``` r
 # Set as variable so we can modify titles + labels on the fly
 binwidth <- 365
 
@@ -170,9 +167,9 @@ ggplot(NYT, aes(x = date, color = cameo.root)) +
   # Make the fonts bigger, boldface the title
   theme( title = element_text(size = 14, face = "bold"),
          axis.text = element_text(size = 12) )
-
 ```
 
+![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/NYT_histogram_type-1.png)
 
 #### Extending Histograms to Other Datasets
 
@@ -182,8 +179,7 @@ ggplot calls can get obnoxiously long and difficult to comment, so many people s
 
 First, SWB:
 
-
-```{r SWB_histogram}
+``` r
 #### Total SWB ####
 
 # Store plot in a variable, then add to it
@@ -208,21 +204,24 @@ base + scale_x_date(date_breaks = "5 years",
          axis.text = element_text(size = 12) )
 ```
 
+    ## Warning: Removed 111 rows containing non-finite values (stat_bin).
+
+![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/SWB_histogram-1.png)
 
 And now we can just call the plot object to get it to plot:
 
-
-```{r SWB_histogram_call}
+``` r
 # Call the plot object to actually plot
 base
-
 ```
 
+    ## Warning: Removed 111 rows containing non-finite values (stat_bin).
+
+![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/SWB_histogram_call-1.png)
 
 Now to repeat the vent type plots we made with the NYT to a different dataset.
 
-
-```{r SWB_histogram_type, warning = FALSE}
+``` r
 #### SWB by Type ####
 
 # Start plot
@@ -250,15 +249,13 @@ ggplot(SWB, aes(x = date, color = cameo.root)) +
   # Make the fonts bigger, boldface the title
   theme( title = element_text(size = 14, face = "bold"),
          axis.text = element_text(size = 12) )
-
 ```
 
+![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/SWB_histogram_type-1.png)
 
 Now for the FBIS data- notice that there is a spurious event lurking somewhere significantly before coverage actually starts.
 
-
-```{r FBIS_histograms, warning = FALSE}
-
+``` r
 #### Total FBIS ####
 
 # Start plot
@@ -281,8 +278,11 @@ ggplot(FBIS, aes(x = date)) +
   # Make the fonts bigger, boldface the title
   theme( title = element_text(size = 14, face = "bold"),
          axis.text = element_text(size = 12) )
+```
 
+![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/FBIS_histograms-1.png)
 
+``` r
 #### FBIS by Type ####
 
 ggplot(FBIS, aes(x = date, color = cameo.root)) + 
@@ -309,15 +309,13 @@ ggplot(FBIS, aes(x = date, color = cameo.root)) +
   # Make the fonts bigger, boldface the title
   theme( title = element_text(size = 14, face = "bold"),
          axis.text = element_text(size = 12) )
-
 ```
 
+![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/FBIS_histograms-2.png)
 
 Finally, ICEWS. Note that the field names in ICEWS are different (`CAMEO.root` vs `cameo.root`).
 
-
-```{r ICEWS_histograms, warning=FALSE}
-
+``` r
 #### Total ICEWS ####
 
 # Start Plot
@@ -340,7 +338,11 @@ ggplot(ICEWS, aes(x = date)) +
   # Make the fonts bigger, boldface the title
   theme( title = element_text(size = 14, face = "bold"),
          axis.text = element_text(size = 12) )
+```
 
+![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/ICEWS_histograms-1.png)
+
+``` r
 #### ICEWS by Type ####
 
 ggplot(ICEWS, aes(x = date, color = CAMEO.root)) + 
@@ -367,9 +369,9 @@ ggplot(ICEWS, aes(x = date, color = CAMEO.root)) +
   # Make the fonts bigger, boldface the title
   theme( title = element_text(size = 14, face = "bold"),
          axis.text = element_text(size = 12) )
-
-
 ```
+
+![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/ICEWS_histograms-2.png)
 
 ### Plotting Multiple Datasets
 
@@ -379,8 +381,7 @@ The preferable approach for ggplot is to format your data to death before plotti
 
 Here I am also storing the plot separately because I want to make a version with a different date scale.
 
-```{r Combined_histogram, warning=FALSE}
-
+``` r
 # store our color scheme for the different sources
 source.color <- c("NYT" = "dodgerblue3", 
              "SWB" = "darkorchid",
@@ -437,27 +438,41 @@ base.plot <-  ggplot(data.frame(), aes(color = source.color)) +
 base.plot
 ```
 
+![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/Combined_histogram-1.png)
 
 It would also make sense to look at the same plot, but only for the dates where there is significant overlap. Since we are especially interested in how ICEWS stacks up, we will start when it starts, 1995. We can add to or override the previously set parameters, and ggplot will warn you if a value is changed. Check out the warnings for all the data being excluded.
 
-
-```{r Combined_histogram_date}
-
+``` r
   ## Changed the start date, WHOOOO!!  
   base.plot + 
   scale_x_date(limits = c(as.Date("1995-01-01"), NA), 
                date_breaks = "2 year",
                date_minor_breaks = "1 year",
                date_labels = "%Y")
-
 ```
 
+    ## Scale for 'x' is already present. Adding another scale for 'x', which
+    ## will replace the existing scale.
+
+    ## Warning: Removed 22383 rows containing non-finite values (stat_bin).
+
+    ## Warning: Removed 26039 rows containing non-finite values (stat_bin).
+
+    ## Warning: Removed 7 rows containing non-finite values (stat_bin).
+
+    ## Warning: Removed 2 rows containing missing values (geom_path).
+
+    ## Warning: Removed 2 rows containing missing values (geom_path).
+
+    ## Warning: Removed 2 rows containing missing values (geom_path).
+
+    ## Warning: Removed 2 rows containing missing values (geom_path).
+
+![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/Combined_histogram_date-1.png)
 
 We can also subset the data within the plot calls, which lets us make a comparison according to that subset between the datasets. In this case, I am only looking at the "Neutral" events across the different datasets.
 
-```{r Combined_histogram_subset, warning=FALSE}
-
-
+``` r
 # Start plot with empty data frame, since we'll add the data separately , store for later
 base.plot <-  ggplot(data.frame(), aes(color = source.color)) + 
   
@@ -508,9 +523,11 @@ base.plot <-  ggplot(data.frame(), aes(color = source.color)) +
 
 # Call the plot
 base.plot
-
 ```
 
-## Conclusions
+![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/Combined_histogram_subset-1.png)
+
+Conclusions
+-----------
 
 Boy, graphs sure are neat, but we could almost as easliy make a bunch of maps. Jump over to **Part 2** of this tutorial so see some mapping in action.
