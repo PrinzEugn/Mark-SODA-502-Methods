@@ -1,0 +1,346 @@
+Mark\_SODA\_502\_Tutorial\_Part\_2
+================
+Mark Simpson
+October 29, 2017
+
+Today I'm going to show you how to make a few automated maps in R using the ICEWS and Phoenix event datasets, which we made graphs of in **Part 1**.
+
+Again, for the sake of this tutorial, I created a subset of the datasets that only contains 5 countries in the Caucasus region: Russia, Georgia, Azerbaijan, Armenia, and Turkey.
+
+Note that Phoenix actually consists of three different subsets, New York Times (NYT), BBC Summary of World Broadcasts (SWB), and CIA Foreign Broadcast Information Service (FBIS), while Integrated Crisis Early Warning (ICEWS) is one single dataset.
+
+We need to load the data and do just a little processing with *dplyr*
+
+``` r
+#### Read Datasets ####
+
+# NYT
+NYT <- read.csv(file ="data/NYT.csv") %>%
+  mutate(date = as.Date(date)) %>%
+  mutate(Dataset = "NYT")
+
+# SWB
+SWB<- read.csv(file ="data/SWB.csv") %>%
+  mutate(date = as.Date(date)) %>%
+  mutate(Dataset = "SWB")
+
+# FBIS
+FBIS <- read.csv(file ="data/FBIS.csv") %>%
+  mutate(date = as.Date(date)) %>%
+  mutate(Dataset = "FBIS")
+
+# ICEWS
+ICEWS <- read.csv(file ="data/ICEWS.csv") %>%
+  mutate(date = as.Date(date)) %>%
+  mutate(Dataset = "ICEWS")
+```
+
+Next, to set up the color schemes created in Part 1
+
+``` r
+# Manually set colors for event types, called in ggmap later
+event.color <- c("Neutral" = "gray60", 
+          "Verbal cooperation" = "steelblue1",
+          "Material cooperation"  = "dodgerblue3", 
+          "Verbal conflict" = "salmon1", 
+          "Material conflict" = "firebrick2")
+
+
+# store our color scheme for the different sources
+source.color <- c("NYT" = "dodgerblue3", 
+             "SWB" = "darkorchid",
+             "FBIS" = "cyan4", 
+             "ICEWS" = "firebrick")
+```
+
+Mapping Event Data
+------------------
+
+Okay, so graphs are cool, but maps are neater!
+
+*ggplot* has some limited ability to deal with geographic data. Here are the points from SWB plotted with an orthographic projection, using the ggplot *coord\_map* and *borders* function. It's not well suited the sort of fine-grained point data we have, however.
+
+``` r
+ggplot(SWB, aes(x = lon, y = lat, color = cameo.root )) +
+  
+  borders("world", color = "gray80", fill = "gray40") +
+  
+  # plot the points
+  geom_point(alpha = .6) + 
+     
+  # Assign our color scheme
+  scale_color_manual(name = "Event Type", values = event.color) +
+  
+  # This resent the alpha to make the legend legible
+  guides(color = guide_legend(override.aes = list(alpha = 1)))+
+
+  # ggplot map coordinate transform 
+  coord_map(projection = "ortho", orientation = c( 45, 80, 0 ))  +
+  
+  # Change the labels to be a little intuitive
+  labs( title = "SWB Events", 
+        x = "Degrees East/West",
+        y = "Degrees North/South")
+```
+
+![](Mark_SODA_502_Part_2_files/figure-markdown_github-ascii_identifiers/SWB_map_globe-1.png)
+
+### Mapping the Google Way
+
+In order to create more detailed maps, we need more detailed data. It is possible to download all sorts of geographic data, but we can also use Google Maps service to provide us with base layers, which we can then just plot on top of.
+
+Let's start with Georgia. First, a little setup. Within Phoenix, countries are recorded using their [ISO 3-letter codes](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3), which can be converted to the full names using a package.
+
+``` r
+# Store Georgia's country code to make things easier
+country <- "GEO"
+
+# create subset for Georgia
+c.subset <- SWB %>% filter(countryname == country)
+
+# Load countrycode package to convert country code to full name
+library(countrycode, suppressPackageStartupMessages(TRUE))
+
+# Get full name of country
+long.name <- countrycode(country, "iso3c", "country.name")
+```
+
+Next, we need to load *ggmap*. We can use the points to create a bounding box which will define the extent of the map. The package warns you doing it this way is experimental, and it will break in some situations, particularly data with global coverage or geometry above 80 degrees North or South.
+
+``` r
+# Load ggmap package
+library(ggmap, suppressPackageStartupMessages(TRUE))
+
+# Get bounding box around points to pass to get_map
+bbox <- make_bbox(lon, lat, c.subset, f = .5)
+
+# Get map for bounding box from google maps service, black and white
+map <- get_map(bbox, color = "bw")
+```
+
+    ## Warning: bounding box given to google - spatial extent only approximate.
+
+    ## converting bounding box to center/zoom specification. (experimental)
+
+    ## Map from URL : http://maps.googleapis.com/maps/api/staticmap?center=42.31665,43.178055&zoom=7&size=640x640&scale=2&maptype=terrain&language=en-EN&sensor=false
+
+``` r
+# Create map with ggmap
+ggmap(map)
+```
+
+![](Mark_SODA_502_Part_2_files/figure-markdown_github-ascii_identifiers/Get_map-1.png)
+
+*ggmap* is set up to behave essentially like a ggplot object, letting us apply all our ggplot variables to the map as if it were any other plot.
+
+To better portray the different events, let's set up more of our visual variables. We're going to be mapping the CAMEO class of each of the points, which again tells us what kind of event it is (Neutral, Verbal Cooperation/Conflict, and Material Cooperation/Conflict).
+
+The particular visual challenge here is over-plotting of symbols, since we can expect multiple events in one recorded location (i.e., a city center).
+
+``` r
+# Manually set shapes for event types, called in ggmap later
+event.shape <- c("Neutral" = 3, 
+               "Verbal cooperation" = 1,
+               "Material cooperation"  = 16, 
+               "Verbal conflict" = 2, 
+               "Material conflict" = 17)
+
+# Manually set sizes for event types, called in ggmap later
+event.size <- c("Neutral" = 1, 
+                "Verbal cooperation" = 2,
+                "Material cooperation"  = 1.5, 
+                "Verbal conflict" = 2, 
+                "Material conflict" = 1.5)
+```
+
+Cool, now let's get mapping! Note that it is really just like *ggplot*. We also have to add our visual variable mapping separately with specific functions.
+
+``` r
+# call ggmap,  tint white
+ggmap(map, darken = c(0.6, "white")) + 
+     
+     # Add points, map to variables
+     geom_point(data = c.subset, 
+               aes(  x = lon,
+                     y = lat,
+                     color = cameo.root,
+                     shape = cameo.root,
+                     size = cameo.root),
+             alpha = .8) + 
+     
+     # Add size mapping
+     scale_size_manual(values = event.size) +
+     
+     # Add color mapping
+     scale_colour_manual(values = event.color) +
+     
+     # Add shape mapping
+     scale_shape_manual(values = event.shape) +
+     
+     # Add label
+     labs( title = paste("SWB", long.name))+
+     
+     # This resent the alpha to make the legend legible
+     guides(color = guide_legend(override.aes = list(alpha = 1)))
+```
+
+![](Mark_SODA_502_Part_2_files/figure-markdown_github-ascii_identifiers/GEO_map-1.png)
+
+### Automated Cartography: Looping Maps
+
+We can also loop this pretty easily and make a map for many countries iteratively, which is useful for these global coverage datasets. While you would want to do more customization if you were aiming to publish (the automation isn't perfect), they work great for basic visualization. Here I just use SWB, but this will work with the other datasets (ICEWS would require some renaming since the field names are different).
+
+While we can grab the country names automatically, we have to exclude Russia since it will not be properly mapped by ggmap. Essentially, ggmap breaks with locations too far North or South, which has to do with the map projection used which has severe distortion near the poles.
+
+Also note that this loop takes a while to run, since it has to query the Google Maps API. If you are making a series of maps, it is better to query the API for the base map, then use that base map multiple times for your different maps. You can totally get API request denials if you query too fast and too often.
+
+``` r
+# Set as a variable, so it's easy to swap out
+title.dataset <- "SWB"
+
+# Get all the countries in the data 
+countries <- as.character(unique(SWB$countryname))
+
+# Russia's extent breaks automated mapping, sorry Russia :(
+countries <- countries[countries != "RUS"]
+
+# Start our loop
+for (i in 1:length(countries)){
+    
+     # Assign by index, sets up everythign else
+     country <- countries[i]
+     
+     # get full name using countrycode package
+     long.name <- countrycode(country, "iso3c", "country.name")
+     
+     # subset dataset by country name
+     c.subset <- SWB %>% filter(countryname == country)
+     
+     # Get bounding box, fudge factor .4
+     bbox <- make_bbox(lon, lat, c.subset, f = .4)
+     
+     # Get map for bounding box
+     map <- get_map(bbox, color = "bw")
+     
+     # Set subtitle
+     sub <- "Events by Type"
+    
+    # Plots events by type
+    type.map.print <- ggmap(map, darken = c(0.7, "white")) + 
+         
+         # Add points, map to variables
+         geom_point(data = c.subset, 
+                          aes(  x = lon,
+                                y = lat, 
+                                color = cameo.root, 
+                                shape = cameo.root,
+                                size = cameo.root), 
+                          alpha = .8) + 
+          # Add size mapping
+          scale_size_manual(values = event.size) +
+          
+          # Add color mapping
+          scale_colour_manual(values = event.color) +
+          
+          # Add shape mapping
+          scale_shape_manual(values = event.shape) +
+          
+          # Add labels by combining the long.name with dataset title
+          labs( title = paste(title.dataset, long.name),
+              subtitle = sub) 
+          
+     # Print is needed to show ggplots created in loops
+     print(type.map.print)
+
+}
+```
+
+    ## converting bounding box to center/zoom specification. (experimental)
+
+    ## Map from URL : http://maps.googleapis.com/maps/api/staticmap?center=38.968215,35.33298&zoom=6&size=640x640&scale=2&maptype=terrain&language=en-EN&sensor=false
+
+    ## converting bounding box to center/zoom specification. (experimental)
+
+    ## Map from URL : http://maps.googleapis.com/maps/api/staticmap?center=40.129225,47.86404&zoom=7&size=640x640&scale=2&maptype=terrain&language=en-EN&sensor=false
+
+![](Mark_SODA_502_Part_2_files/figure-markdown_github-ascii_identifiers/Looped_mapping-1.png)
+
+    ## converting bounding box to center/zoom specification. (experimental)
+
+    ## Map from URL : http://maps.googleapis.com/maps/api/staticmap?center=40.07325,45.1096&zoom=8&size=640x640&scale=2&maptype=terrain&language=en-EN&sensor=false
+
+![](Mark_SODA_502_Part_2_files/figure-markdown_github-ascii_identifiers/Looped_mapping-2.png)
+
+    ## converting bounding box to center/zoom specification. (experimental)
+
+    ## Map from URL : http://maps.googleapis.com/maps/api/staticmap?center=42.31665,43.178055&zoom=7&size=640x640&scale=2&maptype=terrain&language=en-EN&sensor=false
+
+![](Mark_SODA_502_Part_2_files/figure-markdown_github-ascii_identifiers/Looped_mapping-3.png)![](Mark_SODA_502_Part_2_files/figure-markdown_github-ascii_identifiers/Looped_mapping-4.png)
+
+### Mapping Multiple Datasets
+
+As with the ggplot histogram comparing the different datasets over time, we can do essentially the same thing with ggmap. This time however, let's make a map of the entire region.
+
+We can do this by first making a map that fits our desired area and then mapping our datasets on top. ggmap will only plot points within the map extent, so we don't have to worry about manual clipping. To find our extent, we can run get\_map by giving it coordinates for the center of our area and a zoom factor.
+
+``` r
+# Get our base map from Google
+aoi.map <- get_map( location = c(lon = 44, lat = 43), zoom = 6, color = "bw")
+```
+
+Let's also set up a event shapes, since we'll have the same problem with over-plotting here. Note that you get several warning messages because of the points outside our map area not being plotted.
+
+``` r
+# Manually set shapes for event types, called in ggmap later
+event.shape <- c("NYT" = 1, 
+                  "SWB" = 5,
+                  "FBIS" = 0, 
+                  "ICEWS" = 18)
+
+# Plot map, with white tint
+ggmap(aoi.map, darken = c(0.6, "white")) +
+     
+     # Add NYT points with right color
+     geom_point(data = NYT[NYT$cameo.root == "Neutral",], 
+                aes(x = lon,
+                    y = lat,
+                    shape = "NYT",
+                    color = "NYT")) +
+     
+     # Add SWB points with right color
+     geom_point(data = SWB[SWB$cameo.root == "Neutral",], 
+                aes(x = lon,
+                    y = lat,
+                    shape = "SWB",
+                    color = "SWB")) +
+     
+     # FBIS points with right color
+     geom_point(data = FBIS[FBIS$cameo.root == "Neutral",],
+                aes(x = lon,
+                    y = lat,
+                    shape = "FBIS",
+                    color = "FBIS")) +
+     
+     # ICEWS: Note cameo field abd location names are different
+     geom_point(data = ICEWS[ICEWS$CAMEO.root == "Neutral",], 
+                aes(x = Longitude,
+                    y = Latitude,
+                    shape = "ICEWS",
+                    color = "ICEWS")) +
+        
+     # Assign source colors, defined earlier
+     scale_color_manual(name = "Source", values = source.color ) +
+     
+     # Add shape mapping
+     scale_shape_manual( name = "Source", values = event.shape ) +
+     
+     # Add label
+     labs( title = "Caucasus Neutral Events by Source" )
+```
+
+![](Mark_SODA_502_Part_2_files/figure-markdown_github-ascii_identifiers/AOI_event_map-1.png)
+
+Conclusion
+----------
+
+*ggplot* is great for data visualization, and *ggmap* is a great extension that lets you easily create maps using Google Maps base data.

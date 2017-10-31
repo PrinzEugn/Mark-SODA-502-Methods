@@ -1,5 +1,5 @@
 ---
-title: "Mark SODA 502 Tutorial Part 2"
+title: "Mark_SODA_502_Tutorial_Part_2"
 author: "Mark Simpson"
 date: "October 29, 2017"
 output: github_document
