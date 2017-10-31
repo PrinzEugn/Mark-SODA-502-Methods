@@ -12,9 +12,14 @@ library(dplyr, suppressPackageStartupMessages(TRUE))
 
 ```
 
-Today I'm going to show you how to make a few simple plots in R using the ICEWS and Phoenix event datasets. For the sake of this tutorial, I created a subset of the datasets that only contains 5 countries in the Caucasus region: Russia, Georgia, Azerbaijan, Armenia, and Turkey.
+Today I'm going to show you how to make a few simple plots in R using the [Integrated Crisis Early Warning (ICEWS)](https://www.lockheedmartin.com/us/products/W-ICEWS.html) and [Phoenix](http://phoenixdata.org/) event datasets, which were automatically generated from news reports and coded according to a common scheme ([CAMEO](http://eventdata.parusanalytics.com/data.dir/cameo.html)). Since we're dealing with visualization in this tutorial, I should point out ICEWS has [one of the worst logos](https://www.lockheedmartin.com/content/lockheed/us/products/W-ICEWS/_jcr_content/center_content/image.img.png/1458325645114.png) I've ever seen. 
+### The Point
 
-Note that Phoenix actually consists of three different subsets, New York Times (NYT), BBC Summary of World Broadcasts (SWB), and CIA Foreign Broadcast Information Service (FBIS), while Integrated Crisis Early Warning (ICEWS) is one single dataset.
+Overall, our goal is to generally compare ICEWS and Phoenix datasets for geographic and temporal coverage, to see if there are any apparent differences that are worth further investigation. To do this, I am creating a series of time series plots as well as event maps. I have split up this tutorial, and will cover maps in future parts.
+
+For the sake of this tutorial, I created a subset of the datasets that only contains geolocated events in 5 countries in the Caucasus region: *Russia, Georgia, Azerbaijan, Armenia,* and *Turkey*. ICEWS had to be subset even farther, and we are using a random 30% sample of the full data for those countries.
+
+Note that Phoenix actually consists of three different subsets, New York Times (NYT), BBC Summary of World Broadcasts (SWB), and CIA Foreign Broadcast Information Service (FBIS), while ICEWS is one single dataset, albeit very large. I am keeping the Phoenix datasets disaggregated because we are interested in any large differences between those sources that might bias some analysis if it assumed they were the same.
 
 First, to load the data and do just a little processing with *dplyr* 
 
@@ -45,11 +50,13 @@ ICEWS <- read.csv(file ="data/ICEWS.csv") %>%
 
 ## Plotting with *ggplot2*
 
-*ggplot2* is both beautiful and terrible. It can produce very nice graphics, but is not super user friendly. *ggplot2* is based off the idea of "grammar of graphics," which is theoretically elegant way of dividing plots into data, visible geometry, and a coordinate system, but is so deep it can be easy to get lost.
+*ggplot2* is both beautiful and terrible. It can produce very nice graphics, but is not super user friendly. It's is based off the idea of "grammar of graphics," which is theoretically elegant way of dividing plots into data, visible geometry ("geoms"), and a coordinate system, but is so deep it can be easy to get lost.
+
+Coming from the deault plotting in *R*, the biggest difference functionally and conceptually is that *ggplots* are built by stacking a series of functions on top of an initial plot function, which does not display anything by itself. These additional functions are either geoms, which actually indicate how the data is to be displayed (i.e., `geom_bar` displays a bar graph), or functions that manipulate some other aspect of the graphic, such as manually setting the colors or axis titles.
 
 ### Histogram basics
 
-Anyway, let's start with a basic histogram showing how many events over time there are in the NYT data. For this, we need to pass ggplot the data, tell it our visual mapping (date should be on the x axis), and then tell it what kind of geometry to make (with a separate function). Also note that y is implicit with a histogram, since it generates the y axis (count).
+Let's start with a basic histogram showing how many events over time there are in the NYT data. For this, we need to pass ggplot the data, tell it our visual mapping (date should be on the x axis), and then tell it what kind of geometry to make (with a separate function). Also note that y is implicit with a histogram, since it generates the y axis (count).
 
 ```{r NYT_histogram_basic}
 library(ggplot2, suppressPackageStartupMessages(TRUE))
@@ -160,7 +167,7 @@ ggplot(NYT, aes(x = date, color = cameo.root)) +
   scale_color_manual(name = "Source", values = event.color) +
   
   # This resent the alpha to make the legend legible
-  guides(color = guide_legend(override.aes = list(alpha = 1)))+
+  guides(color = guide_legend(override.aes = list(alpha = 1)) ) +
   
   # Change the labels to be a little intuitive
   labs( title = paste("Phoenix NYT Events per", binwidth, "days"), 
@@ -173,6 +180,35 @@ ggplot(NYT, aes(x = date, color = cameo.root)) +
 
 ```
 
+Now that we have a graph set up, we can swap out variables to plot different aspects. Here instead of cameo.root, we use countryname, which contains the country names. Of course, if we wanted to publish this we'd update the codes to full country names (more on that later!).
+
+```{r NYT_histogram_country}
+# Set as variable so we can modify titles + labels on the fly
+binwidth <- 365
+
+ggplot(NYT, aes(x = date, color = countryname)) + 
+  
+  # Use frequency polygon; expand binwidth to variable days, set transparent
+  geom_freqpoly(binwidth = binwidth, alpha = .8, size = 1) +
+  
+  # Change the breaks to better cover the area
+  scale_x_date(date_breaks = "10 years",
+               date_minor_breaks = "1 year",
+               date_labels = "%Y") +
+
+  # This resent the alpha to make the legend legible
+  guides(color = guide_legend(override.aes = list(alpha = 1))) +
+  
+  # Change the labels to be a little intuitive
+  labs( title = paste("Phoenix NYT Events per Country", binwidth, "days"), 
+        x = NULL,
+        y = paste(binwidth, "Day Count") ) +
+  
+  # Make the fonts bigger, boldface the title
+  theme( title = element_text(size = 14, face = "bold"),
+         axis.text = element_text(size = 12) )
+
+```
 
 #### Extending Histograms to Other Datasets
 

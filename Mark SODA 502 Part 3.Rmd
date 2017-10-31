@@ -1,0 +1,115 @@
+---
+title: "Mark_SODA_502_Tutorial_Part_2"
+author: "Mark Simpson"
+date: "October 29, 2017"
+output: github_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr, suppressPackageStartupMessages(TRUE))
+library(ggplot2, suppressPackageStartupMessages(TRUE))
+
+```
+
+Today I'm going to show you how to make a few  automated maps in R using the ICEWS and Phoenix event datasets, which we made graphs of in **Part 1**.
+
+Again, for the sake of this tutorial, I created a subset of the datasets that only contains 5 countries in the Caucasus region: Russia, Georgia, Azerbaijan, Armenia, and Turkey.
+
+Note that Phoenix actually consists of three different subsets, New York Times (NYT), BBC Summary of World Broadcasts (SWB), and CIA Foreign Broadcast Information Service (FBIS), while Integrated Crisis Early Warning (ICEWS) is one single dataset.
+
+We need to load the data and do just a little processing with *dplyr* 
+
+```{r read_data}
+#### Read Datasets ####
+
+# NYT
+NYT <- read.csv(file ="data/NYT.csv") %>%
+  mutate(date = as.Date(date)) %>%
+  mutate(Dataset = "NYT")
+
+# SWB
+SWB<- read.csv(file ="data/SWB.csv") %>%
+  mutate(date = as.Date(date)) %>%
+  mutate(Dataset = "SWB")
+
+# FBIS
+FBIS <- read.csv(file ="data/FBIS.csv") %>%
+  mutate(date = as.Date(date)) %>%
+  mutate(Dataset = "FBIS")
+
+# ICEWS
+ICEWS <- read.csv(file ="data/ICEWS.csv") %>%
+  mutate(date = as.Date(date)) %>%
+  mutate(Dataset = "ICEWS")
+
+```
+Next, to set up the color schemes created in Part 1
+
+```{r Color_mappings}
+
+# Manually set colors for event types, called in ggmap later
+event.color <- c("Neutral" = "gray60", 
+          "Verbal cooperation" = "steelblue1",
+          "Material cooperation"  = "dodgerblue3", 
+          "Verbal conflict" = "salmon1", 
+          "Material conflict" = "firebrick2")
+
+
+# store our color scheme for the different sources
+source.color <- c("NYT" = "dodgerblue3", 
+             "SWB" = "darkorchid",
+             "FBIS" = "cyan4", 
+             "ICEWS" = "firebrick")
+
+# Manually set shapes for event types, called in ggmap later
+event.shape <- c("Neutral" = 3, 
+               "Verbal cooperation" = 1,
+               "Material cooperation"  = 16, 
+               "Verbal conflict" = 2, 
+               "Material conflict" = 17)
+
+# Manually set sizes for event types, called in ggmap later
+event.size <- c("Neutral" = 1, 
+                "Verbal cooperation" = 2,
+                "Material cooperation"  = 1.5, 
+                "Verbal conflict" = 2, 
+                "Material conflict" = 1.5)
+
+```
+
+## Mapping Event Data
+
+Okay, so graphs are cool, but maps are neater!
+
+*ggplot* has some limited ability to deal with geographic data. Here are the points from SWB plotted with an orthographic projection, using the ggplot *coord_map* and *borders* function. It's not well suited the sort of fine-grained point data we have, however.
+
+```{r SWB_map_globe, warning=FALSE}
+
+ggplot(SWB, aes(x = lon, y = lat, color = cameo.root )) +
+  
+  borders("world", color = "gray80", fill = "gray40") +
+  
+  # plot the points
+  geom_point(alpha = .6) + 
+     
+  # Assign our color scheme
+  scale_color_manual(name = "Event Type", values = event.color) +
+  
+  # This resent the alpha to make the legend legible
+  guides(color = guide_legend(override.aes = list(alpha = 1)))+
+
+  # ggplot map coordinate transform 
+  coord_map(projection = "ortho", orientation = c( 45, 80, 0 ))  +
+  
+  # Change the labels to be a little intuitive
+  labs( title = "SWB Events", 
+        x = "Degrees East/West",
+        y = "Degrees North/South")
+
+```
+
+## Conclusion
+
+*ggplot* is great for data visualization, and *ggmap* is a great extension that lets you easily create maps using Google Maps base data.
