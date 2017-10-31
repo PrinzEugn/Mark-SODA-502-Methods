@@ -13,11 +13,9 @@ library(ggplot2, suppressPackageStartupMessages(TRUE))
 
 ```
 
-Today I'm going to show you how to make a few  automated maps in R using the ICEWS and Phoenix event datasets, which we made graphs of in **Part 1**.
+Today I'm going to show you how to make a few  automated maps in R using the ICEWS and Phoenix event datasets, which we made graphs of in **Part 1**. We will use the same data and the same color scheme in order to maintain visual consistency, so that we can easily connect information between graphics.
 
-Again, for the sake of this tutorial, I created a subset of the datasets that only contains 5 countries in the Caucasus region: Russia, Georgia, Azerbaijan, Armenia, and Turkey.
-
-Note that Phoenix actually consists of three different subsets, New York Times (NYT), BBC Summary of World Broadcasts (SWB), and CIA Foreign Broadcast Information Service (FBIS), while Integrated Crisis Early Warning (ICEWS) is one single dataset.
+Again, for the sake of this tutorial, I created a subset of the datasets that only contains 5 countries in the Caucasus region: Russia, Georgia, Azerbaijan, Armenia, and Turkey. Phoenix actually consists of three different subsets, New York Times (NYT), BBC Summary of World Broadcasts (SWB), and CIA Foreign Broadcast Information Service (FBIS), while Integrated Crisis Early Warning (ICEWS) is one single dataset.
 
 We need to load the data and do just a little processing with *dplyr* 
 
