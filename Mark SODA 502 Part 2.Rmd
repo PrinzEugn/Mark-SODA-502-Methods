@@ -17,7 +17,7 @@ Here I'm going to show you how to make a few  automated maps in R using the ICEW
 
 Again, for the sake of this tutorial, I created a subset of the datasets that only contains 5 countries in the Caucasus region: Russia, Georgia, Azerbaijan, Armenia, and Turkey. Phoenix actually consists of three different subsets, New York Times (NYT), BBC Summary of World Broadcasts (SWB), and CIA Foreign Broadcast Information Service (FBIS), while Integrated Crisis Early Warning (ICEWS) is one single dataset.
 
-We need to load the data and do just a little processing with *dplyr* 
+We need to load the data and do just a little processing with *dplyr*, just like last time.
 
 ```{r read_data}
 #### Read Datasets ####
