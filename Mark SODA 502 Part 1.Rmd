@@ -12,17 +12,18 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 Today I'm going to show you how to make a few simple plots in R using the [Integrated Crisis Early Warning (ICEWS)](https://www.lockheedmartin.com/us/products/W-ICEWS.html) and [Phoenix](http://phoenixdata.org/) event datasets, which were automatically generated from news reports and coded according to a common scheme ([CAMEO](http://eventdata.parusanalytics.com/data.dir/cameo.html)). Since we're dealing with visualization in this tutorial, I should point out ICEWS has [one of the worst logos](https://www.lockheedmartin.com/content/lockheed/us/products/W-ICEWS/_jcr_content/center_content/image.img.png/1458325645114.png) I've ever seen. 
-### The Point
+
+###The Point
 
 Overall, our goal is to generally compare ICEWS and Phoenix datasets for geographic and temporal coverage, to see if there are any apparent differences that are worth further investigation. To do this, I am creating a series of time series plots as well as event maps. I have split up this tutorial, and will cover maps in future parts.
 
 For the sake of this tutorial, I created a subset of the datasets that only contains geolocated events in 5 countries in the Caucasus region: *Russia, Georgia, Azerbaijan, Armenia,* and *Turkey*. ICEWS had to be subset even farther, and we are using a random 30% sample of the full data for those countries.
 
-Note that Phoenix actually consists of three different subsets, New York Times (NYT), BBC Summary of World Broadcasts (SWB), and CIA Foreign Broadcast Information Service (FBIS), while ICEWS is one single dataset, albeit very large. I am keeping the Phoenix datasets disaggregated because we are interested in any large differences between those sources that might bias some analysis if it assumed they were the same.
+Note that Phoenix actually consists of three different subsets, New York Times (NYT), BBC Summary of World Broadcasts (SWB), and CIA Foreign Broadcast Information Service (FBIS), while ICEWS is one single dataset, albeit very large. I am keeping the Phoenix datasets dis-aggregated because we are interested in any large differences between those sources that might bias some analysis if it assumed they were the same.
 
 First, to load the data and do just a little processing with *dplyr* 
 
-```{r read_data}
+```{r read_data, message=FALSE}
 #### Read Datasets ####
 library(dplyr, suppressPackageStartupMessages(TRUE))
 
@@ -52,7 +53,7 @@ ICEWS <- read.csv(file ="data/ICEWS.csv") %>%
 
 *ggplot2* is both beautiful and terrible. It can produce very nice graphics, but is not super user friendly. It's is based off the idea of "grammar of graphics," which is theoretically elegant way of dividing plots into data, visible geometry ("geoms"), and a coordinate system, but is so deep it can be easy to get lost.
 
-Coming from the deault plotting in *R*, the biggest difference functionally and conceptually is that *ggplots* are built by stacking a series of functions on top of an initial plot function, which does not display anything by itself. These additional functions are either geoms, which actually indicate how the data is to be displayed (i.e., `geom_bar` displays a bar graph), or functions that manipulate some other aspect of the graphic, such as manually setting the colors or axis titles.
+Coming from the default plotting in *R*, the biggest difference functionally and conceptually is that *ggplots* are built by stacking a series of functions on top of an initial plot function, which does not display anything by itself. These additional functions are either geoms, which actually indicate how the data is to be displayed (i.e., `geom_bar` displays a bar graph), or functions that manipulate some other aspect of the graphic, such as manually setting the colors or axis titles.
 
 ### The Noble Barchart
 
@@ -87,7 +88,7 @@ ggplot(NYT, aes(x = date)) +
 
 ```
 
-That's cool, but is still missing some important features like a title, and the aesthetic mapping could be better. The following is the type of customization you can do within ggplot. First, we can change the will with `fill = "dodgerblue3"`, "dodgerblue3" being one of the named colors in *R*. We can use `scale_x_date`, a specialized *ggplot* function to modify the display of dates, changing the breaks and the format of the date label itself to years. Here we are letting *ggplot* figure out the limits automatically, which is important to realize since our datasets have different temporal coverage. We can then change the label text to be more descriptive, and give the plot a title. Then, we can use theme to do a little formatting on the text elements to make them larger and more readable.
+That's cool, but is still missing some important features like a title, and the aesthetic mapping could be better. The following is the type of customization you can do within ggplot. First, we can change the will with `fill = "dodgerblue3"`, "dodgerblue3" being one of the named colors in *R*. We can use `scale_x_date`, a specialized *ggplot* function to modify the display of dates, changing the breaks and the format of the date label itself to years. Here we are letting *ggplot* figure out the limits automatically, which is important to realize since our data sets have different temporal coverage. We can then change the label text to be more descriptive, and give the plot a title. Then, we can use theme to do a little formatting on the text elements to make them larger and more readable.
 
 Here is what that all looks like, put together:
 
@@ -594,7 +595,7 @@ base.plot
 
 ```
 
-Note thate ICEWS, despite it's huge size, seems to not have very many neutral events. 
+Note that ICEWS, despite it's huge size, seems to not have very many neutral events. 
 
 ## Bar Charts Revisited
 
