@@ -15,7 +15,7 @@ library(ggplot2, suppressPackageStartupMessages(TRUE))
 
 Here I'm going to show you how to make a few  automated maps in R using the ICEWS and Phoenix event datasets, which we made graphs of in **Part 1**. We will use the same data and the same color scheme in order to maintain visual consistency, so that we can easily connect information between graphics.
 
-Again, for the sake of this tutorial, I created a subset of the datasets that only contains 5 countries in the Caucasus region: Russia, Georgia, Azerbaijan, Armenia, and Turkey. Phoenix actually consists of three different subsets, New York Times (NYT), BBC Summary of World Broadcasts (SWB), and CIA Foreign Broadcast Information Service (FBIS), while Integrated Crisis Early Warning (ICEWS) is one single dataset.
+Again, for the sake of this tutorial, I created a subset of the datasets that only contains 5 countries in the Caucasus region: Russia, Georgia, Azerbaijan, Armenia, and Turkey. Phoenix actually consists of three different subsets, New York Times (NYT), BBC Summary of World Broadcasts (SWB), and CIA Foreign Broadcast Information Service (FBIS), while Integrated Crisis Early Warning (ICEWS) is one single data set.
 
 We need to load the data and do just a little processing with *dplyr*, just like last time.
 
@@ -129,13 +129,23 @@ library(ggmap, suppressPackageStartupMessages(TRUE))
 bbox <- make_bbox(lon, lat, c.subset, f = .5)
 
 # Get map for bounding box from google maps service, black and white
-map <- get_map(bbox, color = "bw")
+test.map <- get_map(bbox)
 
 # Create map with ggmap
-ggmap(map)
+ggmap(test.map)
 
 ```
 
+We can designate the source and style of the map if we want ( [see here](https://www.r-bloggers.com/google-maps-and-ggmap/) ), but for our purposes we just need something we can easily distinguish our event points from, so let's load the default map in black and white.
+
+```{r Get_map_black and white}
+# Get map for bounding box from google maps service, black and white
+geo.map <- get_map(bbox, color = "bw")
+
+# Create map with ggmap
+ggmap(geo.map)
+
+```
 
 *ggmap* is set up to behave essentially like a ggplot object, letting us apply all our ggplot variables to the map as if it were any other plot.
 
@@ -169,7 +179,7 @@ Cool, now let's get mapping! Note that it is really just like *ggplot*. We also 
 ```{r GEO_map, warning=FALSE}
 
 # call ggmap,  tint white
-ggmap(map, darken = c(0.6, "white")) + 
+ggmap(geo.map, darken = c(0.6, "white")) + 
      
      # Add points, map to variables
      geom_point(data = c.subset, 
@@ -197,13 +207,48 @@ ggmap(map, darken = c(0.6, "white")) +
 
 ```
 
+Cool, now let's get mapping! Note that it is really just like *ggplot*. We also have to add our visual variable mapping separately with specific functions.
+
+
+```{r GEO_map_Mean_Center, warning=FALSE}
+
+# call gggeo.map,  tint white
+ggmap(geo.map, darken = c(0.6, "white")) + 
+     
+     # Add points, map to variables
+     geom_point(data = c.subset, 
+               aes(  x = lon,
+                     y = lat,
+                     color = cameo.root,
+                     shape = cameo.root,
+                     size = cameo.root),
+             alpha = .8) + 
+     
+     # Add size mapping
+     scale_size_manual(values = event.size) +
+     
+     # Add color mapping
+     scale_colour_manual(values = event.color) +
+     
+     # Add shape mapping
+     scale_shape_manual(values = event.shape) +
+     
+     # Add label
+     labs( title = paste("SWB", long.name))+
+     
+     # This resent the alpha to make the legend legible
+     guides(color = guide_legend(override.aes = list(alpha = 1)))
+
+```
+
+
 ### Automated Cartography: Looping Maps
 
 We can also loop this pretty easily and make a map for many countries iteratively, which is useful for these global coverage datasets. While you would want to do more customization if you were aiming to publish (the automation isn't perfect), they work great for basic visualization. Here I just use SWB, but this will work with the other datasets (ICEWS would require some renaming since the field names are different).
 
 While we can grab the country names automatically, we have to exclude Russia since it will not be properly mapped by ggmap. Essentially, ggmap breaks with locations too far North or South, which has to do with the map projection used which has severe distortion near the poles. 
 
-Also note that this loop takes a while to run, since it has to query the Google Maps API. If you are making a series of maps, it is better to query the API for the base map, then use that base map multiple times for your different maps. You can totally get API request denials if you query too fast and too often.
+Also note that this loop takes a while to run, since it has to query the Google Maps API. If you are making a series of maps, it is better to query the API for the base map, then use that base map multiple times for your different maps (i.e., within the loop). You can totally get API request denials if you query too fast and too often.
 
 
 ```{r Looped_mapping, warning=FALSE}
@@ -230,7 +275,7 @@ for (i in 1:length(countries)){
      c.subset <- SWB %>% filter(countryname == country)
      
      # Get bounding box, fudge factor .4
-     bbox <- make_bbox(lon, lat, c.subset, f = .4)
+     bbox <- make_bbox(lon, lat, c.subset, f = .45)
      
      # Get map for bounding box
      map <- get_map(bbox, color = "bw")
@@ -269,15 +314,17 @@ for (i in 1:length(countries)){
 
 ```
 
+
 ### Mapping Multiple Datasets
 
-As with the ggplot histogram comparing the different datasets over time, we can do essentially the same thing with ggmap. This time however, let's make a map of the entire region.
+As with the *ggplot* histogram comparing the different datasets over time, we can do essentially the same thing with *ggmap*. This time however, let's make a map of the entire region, or as people in the biz' say, "Area of Interest" (AOI).
 
-We can do this by first making a map that fits our desired area and then mapping our datasets on top. ggmap will only plot points within the map extent, so we don't have to worry about manual clipping. To find our extent, we can run get_map by giving it coordinates for the center of our area and a zoom factor.
+We can do this by first making a map that fits our desired area and then mapping our datasets on top. *ggmap* will only plot points within the map extent, so we don't have to worry about manual clipping. To find our extent, we can run get_map by giving it coordinates for the center of our area and a zoom factor. 
+
 
 ```{r AOI_basemap, message=FALSE}
 
-# Get our base map from Google
+# Get our base map from Google, sore in variable
 aoi.map <- get_map( location = c(lon = 44, lat = 43), zoom = 6, color = "bw")
 
 ```
@@ -334,6 +381,208 @@ ggmap(aoi.map, darken = c(0.6, "white")) +
 
 ```
 
+### Mean Center Madness
+
+A very simple spatial analysis method is to compare the [mean center](http://desktop.arcgis.com/en/arcmap/10.3/tools/spatial-statistics-toolbox/h-how-mean-center-spatial-statistics-works.htm) of a collection of objects. This is simply the average location in x and y (latitude and longitude), showing us the general trend of where most of our data is located. In our case this is useful since we have a lot of points, many of which are perfectly overlapping and therefore impossible to count visually.
+
+With some judicious indexing in the `data` field, we can map the mean center for each country, for each event type, and for each time period. Since we already have the GEO map stored as a variable, we can keep using it as many times as we need to without worrying and over-querying the Google Maps API (again, important for looping). 
+
+
+```{r GEO_mean_center_source, warning=FALSE}
+
+country.name <- "GEO"
+
+# Store point shape/size/alpha since we have to call this per point
+point.size <- 3
+point.shape <- 18
+
+
+# Plot map, with white tint
+ggmap(geo.map, darken = c(0.6, "white") ) +
+
+     # Plot Georgia's mean center for NYT
+     geom_point(data = NYT[NYT$countryname == country.name,], 
+                aes(x = mean(lon), 
+                    y = mean(lat),
+                    color = "NYT",
+                    fill = "NYT"),
+                size = point.size,
+                shape = point.shape) +
+
+     # Plot Georgia's mean center for SWB
+     geom_point(data = SWB[SWB$countryname == country.name,],
+                aes(x = mean(lon),
+                    y = mean(lat),
+                    color = "SWB",
+                    fill = "SWB"),
+                size = point.size,
+                shape = point.shape) +
+
+     # Plot Georgia's mean center for FBIS
+     geom_point(data = FBIS[FBIS$countryname == country.name,],
+                aes(x = mean(lon),
+                    y = mean(lat),
+                    color = "FBIS",
+                    fill = "FBIS"),
+                size = point.size,
+                shape = point.shape) +
+
+     # Plot Georgia's mean center for ICEWS
+     geom_point(data = ICEWS[ICEWS$countryname == country.name,],
+                aes(x = mean(Longitude),
+                    y = mean(Latitude),
+                    color = "ICEWS",
+                    fill = "ICEWS"),
+                size = point.size,
+                shape = point.shape) +
+     
+     # Assign source colors, defined earlier
+     scale_color_manual(name = "Source", values = source.color ) +
+     
+     # Assign source colors to fill, which is a separate value
+     scale_fill_manual(name = "Source", values = source.color) +
+
+     # Add labels
+     labs( title = "Caucasus Events Mean Center by Source" )
+
+```
+
+Note that while there are differences overall might be due to some sort of bias in the collection by the source, we're ignoring an important aspect: *time*. Each data set has a different span of temporal coverage, so let's make the same map, but filtered by time. Let's go ahead and store that as a variable so we can access it later.
+
+```{r GEO_mean_center_source_time, warning=FALSE}
+
+# Plot map, with white tint
+mean.geo.map <- ggmap(geo.map, darken = c(0.6, "white") ) +
+
+     # Plot Georgia's mean center for NYT
+     geom_point(data = NYT[(NYT$countryname == country.name) &
+                                (NYT$date > "1995-01-01") &
+                                (NYT$date < "2004-01-01"), ],
+                aes(x = mean(lon),
+                    y = mean(lat),
+                    color = "NYT",
+                    fill = "NYT"),
+                size = point.size,
+                shape = point.shape) +
+
+     # Plot Georgia's mean center for SWB, apparently some NA's snuck in
+     geom_point(data = SWB[(SWB$countryname == country.name) 
+                           & (SWB$date > "1995-01-01") 
+                           & (SWB$date < "2004-01-01"), ],
+                aes(x = mean(lon, na.rm = TRUE),
+                    y = mean(lat, na.rm = TRUE),
+                    color = "SWB",
+                    fill = "SWB"),
+                size = point.size,
+                shape = point.shape) +
+
+     # Plot Georgia's mean center for FBIS
+     geom_point(data = FBIS[FBIS$countryname == country.name&
+                                (FBIS$date > "1995-01-01") &
+                                (FBIS$date < "2004-01-01"), ],
+                aes(x = mean(lon),
+                    y = mean(lat),
+                    color = "FBIS",
+                    fill = "FBIS"),
+                size = point.size,
+                shape = point.shape) +
+
+     # Plot Georgia's mean center for ICEWS
+     geom_point(data = ICEWS[ICEWS$countryname == country.name&
+                                (ICEWS$date > "1995-01-01") &
+                                (ICEWS$date < "2004-01-01"), ],
+                aes(x = mean(Longitude),
+                    y = mean(Latitude),
+                    color = "ICEWS",
+                    fill = "ICEWS"),
+                size = point.size,
+                shape = point.shape) +
+     
+     # Assign source colors, defined earlier
+     scale_color_manual(name = "Source", values = source.color ) +
+     
+     # Assign source colors to fill, which is a separate value
+     scale_fill_manual(name = "Source", values = source.color) +
+
+     # Add labels
+     labs( title = "Caucasus Events 1995-2004 Mean Center by Source" )
+
+```
+
+Interestingly, ICEWS is most similar to FBIS, and both are closer to the capital, Tbilisi.
+
+We can also split up the data by event type, again by some more indexing. The indexing is getting rather gnarly at this point, so in practice it's better to subset your data just for the sake of debugging. 
+
+Let's take a look at Material Conflict, and let's plot it on top of the the previous map so we can see how the mean center shifts by attribute.
+
+```{r GEO_mean_center_type_time, warning=FALSE}
+
+# Shape to distinguish from old points, triangle as used for material conflict
+point.shape.2 <- 2
+
+# Plot map, with white tint
+mean.geo.map +
+
+     # Plot Georgia's mean center for NYT
+     geom_point(data = NYT[(NYT$countryname == country.name) &
+                                (NYT$date > "1995-01-01") &
+                                (NYT$date < "2004-01-01") &
+                                (NYT$cameo.root == "Material conflict"), ],
+                aes(x = mean(lon),
+                    y = mean(lat),
+                    color = "NYT",
+                    fill = "NYT"),
+                size = point.size,
+                shape = point.shape.2) +
+
+     # Plot Georgia's mean center for SWB, apparently some NA's snuck in
+     geom_point(data = SWB[(SWB$countryname == country.name) &
+                                (SWB$date > "1995-01-01") &
+                                (SWB$date < "2004-01-01") &
+                                (SWB$cameo.root == "Material conflict"), ],
+                aes(x = mean(lon, na.rm = TRUE),
+                    y = mean(lat, na.rm = TRUE),
+                    color = "SWB",
+                    fill = "SWB"),
+                size = point.size,
+                shape = point.shape.2) +
+
+     # Plot Georgia's mean center for FBIS
+     geom_point(data = FBIS[FBIS$countryname == country.name &
+                                (FBIS$date > "1995-01-01") &
+                                (FBIS$date < "2004-01-01") &
+                                (FBIS$cameo.root == "Material conflict"), ],
+                aes(x = mean(lon),
+                    y = mean(lat),
+                    color = "FBIS",
+                    fill = "FBIS"),
+                size = point.size,
+                shape = point.shape.2) +
+
+     # Plot Georgia's mean center for ICEWS
+     geom_point(data = ICEWS[ICEWS$countryname == country.name &
+                                (ICEWS$date > "1995-01-01") &
+                                (ICEWS$date < "2004-01-01") &
+                                (ICEWS$cameo.root == "Material conflict"), ],
+                aes(x = mean(Longitude),
+                    y = mean(Latitude),
+                    color = "ICEWS",
+                    fill = "ICEWS"),
+                size = point.size,
+                shape = point.shape.2) +
+     
+     # Add labels
+     labs( title = "Material Conflicts 1995-2004, Mean Center by Source" )
+
+
+```
+
+ICEWS is most similar to FBIS, but now NYT and SWB are closer together, and we can see a visible shift away from the capital when we consider only Material conflict events, towards Russia. I wonder why? Oh, it's because it's Russia.
+
 ## Conclusion
 
-*ggplot* is great for data visualization, and *ggmap* is a great extension that lets you easily create maps using Google Maps base data.
+There are obviously a lot of different combinations of attributes, sources, and time periods we can map, and I didn't cover them all. Making maps like these can be mostly automated, though there are issues with the current implementation of *ggmap*. For example, some countries only have events at a single location, due to the way the geoparsing finds locations, which makes finding a bounding box automatically fail, which causes the maps to fail. Finding countries by their names is also unreliable since the default zoom is much to close to display some countries in their entirety (like Russia).
+
+Future work includes trying to find a graceful workaround for the above issues, and implementing the creation of some of these analysis maps in a more automated way. I am also working on creating global-level maps, which involves reading in shapefiles and combining them with generated summary tables, but is something I did not have time to include here.
+
+Overall, I hope you learned something, and happy mapping!
