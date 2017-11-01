@@ -3,13 +3,11 @@ Mark\_SODA\_502\_Tutorial\_Part\_2
 Mark Simpson
 October 29, 2017
 
-Today I'm going to show you how to make a few automated maps in R using the ICEWS and Phoenix event datasets, which we made graphs of in **Part 1**.
+Here I'm going to show you how to make a few automated maps in R using the ICEWS and Phoenix event datasets, which we made graphs of in **Part 1**. We will use the same data and the same color scheme in order to maintain visual consistency, so that we can easily connect information between graphics.
 
-Again, for the sake of this tutorial, I created a subset of the datasets that only contains 5 countries in the Caucasus region: Russia, Georgia, Azerbaijan, Armenia, and Turkey.
+Again, for the sake of this tutorial, I created a subset of the datasets that only contains 5 countries in the Caucasus region: Russia, Georgia, Azerbaijan, Armenia, and Turkey. Phoenix actually consists of three different subsets, New York Times (NYT), BBC Summary of World Broadcasts (SWB), and CIA Foreign Broadcast Information Service (FBIS), while Integrated Crisis Early Warning (ICEWS) is one single dataset.
 
-Note that Phoenix actually consists of three different subsets, New York Times (NYT), BBC Summary of World Broadcasts (SWB), and CIA Foreign Broadcast Information Service (FBIS), while Integrated Crisis Early Warning (ICEWS) is one single dataset.
-
-We need to load the data and do just a little processing with *dplyr*
+We need to load the data and do just a little processing with *dplyr*, just like last time.
 
 ``` r
 #### Read Datasets ####
@@ -291,8 +289,8 @@ aoi.map <- get_map( location = c(lon = 44, lat = 43), zoom = 6, color = "bw")
 Let's also set up a event shapes, since we'll have the same problem with over-plotting here. Note that you get several warning messages because of the points outside our map area not being plotted.
 
 ``` r
-# Manually set shapes for event types, called in ggmap later
-event.shape <- c("NYT" = 1, 
+# Manually set shapes for sources
+source.shape <- c("NYT" = 1, 
                   "SWB" = 5,
                   "FBIS" = 0, 
                   "ICEWS" = 18)
@@ -322,7 +320,7 @@ ggmap(aoi.map, darken = c(0.6, "white")) +
                     color = "FBIS")) +
      
      # ICEWS: Note cameo field abd location names are different
-     geom_point(data = ICEWS[ICEWS$CAMEO.root == "Neutral",], 
+     geom_point(data = ICEWS[ICEWS$cameo.root == "Neutral",], 
                 aes(x = Longitude,
                     y = Latitude,
                     shape = "ICEWS",
@@ -332,7 +330,7 @@ ggmap(aoi.map, darken = c(0.6, "white")) +
      scale_color_manual(name = "Source", values = source.color ) +
      
      # Add shape mapping
-     scale_shape_manual( name = "Source", values = event.shape ) +
+     scale_shape_manual( name = "Source", values = source.shape ) +
      
      # Add label
      labs( title = "Caucasus Neutral Events by Source" )
