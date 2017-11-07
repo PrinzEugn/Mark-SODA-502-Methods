@@ -7,7 +7,7 @@ Today I'm going to show you how to make a few simple plots in R using the [Integ
 
 ### The Point
 
-Overall, our goal is to generally compare ICEWS and Phoenix datasets for geographic and temporal coverage, to see if there are any apparent differences that are worth further investigation. To do this, I am creating a series of time series plots as well as event maps. I have split up this tutorial, and will cover maps in future parts.
+Overall, our goal is to generally compare ICEWS and Phoenix datasets for geographic and temporal coverage, to see if there are any apparent differences that are worth further investigation. To do this, I am creating a series of time series plots as well as event maps. I have split up this tutorial, and will cover maps in Part 2.
 
 For the sake of this tutorial, I created a subset of the datasets that only contains geolocated events in 5 countries in the Caucasus region: *Russia, Georgia, Azerbaijan, Armenia,* and *Turkey*. ICEWS had to be subset even farther, and we are using a random 30% sample of the full data for those countries.
 
@@ -37,7 +37,8 @@ FBIS <- read.csv(file ="data/FBIS.csv") %>%
 # ICEWS
 ICEWS <- read.csv(file ="data/ICEWS.csv") %>%
   mutate(date = as.Date(date)) %>%
-  mutate(Dataset = "ICEWS")
+  mutate(Dataset = "ICEWS") %>%
+  rename(cameo.root = quad_class)
 ```
 
 Plotting with *ggplot2*
@@ -45,7 +46,7 @@ Plotting with *ggplot2*
 
 *ggplot2* is both beautiful and terrible. It can produce very nice graphics, but is not super user friendly. It's is based off the idea of "grammar of graphics," which is theoretically elegant way of dividing plots into data, visible geometry ("geoms"), and a coordinate system, but is so deep it can be easy to get lost.
 
-Coming from the default plotting in *R*, the biggest difference functionally and conceptually is that *ggplots* are built by stacking a series of functions on top of an initial plot function, which does not display anything by itself. These additional functions are either geoms, which actually indicate how the data is to be displayed (i.e., `geom_bar` displays a bar graph), or functions that manipulate some other aspect of the graphic, such as manually setting the colors or axis titles.
+Coming from the default plotting in *R*, the biggest difference functionally and conceptually is that *ggplots* are built by stacking a series of functions on top of an initial plot function, which does not display anything by itself. These additional functions are either geoms, which actually indicate how the data is to be displayed (i.e., `geom_bar` displays a bar graph), or functions that manipulate some other aspect of the graphic, such as manually setting the colors or axis titles (e.g. `ggtitle`).
 
 ### The Noble Barchart
 
@@ -402,12 +403,49 @@ ggplot(FBIS, aes(x = date)) +
 
 ![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/FBIS_histograms_date_fixed-1.png)
 
+Since FBIS doesn't cover that long of a period, it would be more appropriate to select a smaller binwidth.
+
 ``` r
-#### FBIS by Type ####
+#### FBIS by Type, binwidth 365 ####
 
 ggplot(FBIS, aes(x = date, color = cameo.root)) + 
   
   # Expand binwidth to variable days, set transparent
+  geom_freqpoly(binwidth = binwidth, alpha = .8, size = 1) +
+  
+     # Rescale date to fit the data
+  scale_x_date(limits = c(as.Date("1995-01-01"), as.Date("2004-01-01")), 
+          date_breaks = "1 years",
+          date_minor_breaks = "1 year",
+          date_labels = "%Y") +
+  
+  # Here is where we are assigning the colors we defined
+  scale_color_manual(name = "Source", values = event.color) +
+  
+  # This resent the alpha to make the legend legible
+  guides(color = guide_legend(override.aes = list(alpha = 1)))+
+  
+  # Change the labels to be a little intuitive
+  labs( title = paste("Phoenix FBIS Events per", 10, "days"), 
+        x = NULL,
+        y = paste(binwidth, "Day Count") ) +
+  
+  # Make the fonts bigger, boldface the title
+  theme( title = element_text(size = 14, face = "bold"),
+         axis.text = element_text(size = 12) )
+```
+
+![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/FBIS_type_date_fixed-1.png)
+
+``` r
+#### FBIS by Type, binwidth 10 ####
+ 
+# Set new binwidth
+binwidth <- 10
+
+ggplot(FBIS, aes(x = date, color = cameo.root)) + 
+  
+  # Set binwidth to 10, set transparent
   geom_freqpoly(binwidth = binwidth, alpha = .8, size = 1) +
   
      # Rescale date to fit the data
@@ -432,7 +470,14 @@ ggplot(FBIS, aes(x = date, color = cameo.root)) +
          axis.text = element_text(size = 12) )
 ```
 
-![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/FBIS_histograms_date_fixed-2.png)
+![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/FBIS_type_date_fixed-2.png)
+
+``` r
+# Set binwidth back to 365
+binwidth <- 365
+```
+
+Note the effect binwidth has on how "smooth" data appears. Smooth might be good for figures in publications, but note the bige chunkes of missing data in 2002 (also visible in the above histogram)
 
 Finally, ICEWS.
 
@@ -463,6 +508,9 @@ ggplot(ICEWS, aes(x = date)) +
 
 ``` r
 #### ICEWS by Type ####
+
+# Set binwidth again
+binwidth <- 100
 
 ggplot(ICEWS, aes(x = date, color = cameo.root)) + 
   
@@ -589,7 +637,7 @@ It would also make sense to look at the same plot, but only for the dates where 
 
 ![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/Combined_histogram_date-1.png)
 
-We can also subset the data within the plot calls, which lets us make a comparison according to that subset between the datasets. In this case, I am only looking at the "Neutral" events across the different datasets.
+We can also subset the data within the plot calls, which lets us make a comparison according to that subset between the datasets. In this case, I am only looking at the total number of "Neutral" events across the different datasets.
 
 ``` r
 # Start plot with empty data frame, since we'll add the data separately , store for later
@@ -646,8 +694,6 @@ base.plot
 
 ![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/Combined_histogram_subset-1.png)
 
-Note that ICEWS, despite it's huge size, seems to not have very many neutral events.
-
 Bar Charts Revisited
 --------------------
 
@@ -693,7 +739,7 @@ ggplot(ICEWS[ICEWS$date > "1995-01-01" | ICEWS$date < "2005-01-01", ],
 
 ![](Mark_SODA_502_Part_1_files/figure-markdown_github-ascii_identifiers/ICEWS_barplot-1.png)
 
-This indicates that for whatever reason, we are seeing a disproportionate amount of Material conflict and Verbal cooperation in ICEWS. This might be due to the initial coding, or some processing done to convert the longer codes into the base codes.
+Interestingly, NYT coverage is much more concentrated on Turkey and Russia, where ICEWS has more events in smaller countries proportionally. The type of events captured is also different, with relatively fewer Material Cooperation events in ICEWS.
 
 Conclusions
 -----------

@@ -30,10 +30,11 @@ FBIS <- read.csv(file ="data/FBIS.csv") %>%
 # ICEWS
 ICEWS <- read.csv(file ="data/ICEWS.csv") %>%
   mutate(date = as.Date(date)) %>%
-  mutate(Dataset = "ICEWS")
+  mutate(Dataset = "ICEWS") %>%
+  rename(cameo.root = quad_class)
 ```
 
-Next, to set up the color schemes created in Part 1
+Next, to set up the color schemes created in *Part 1*, for events and sources. Recording color schemes in this way allows us to keep things visually consistent across all types of figures.
 
 ``` r
 # Manually set colors for event types, called in ggmap later
@@ -56,7 +57,7 @@ Mapping Event Data
 
 Okay, so graphs are cool, but maps are neater!
 
-*ggplot* has some limited ability to deal with geographic data. Here are the points from SWB plotted with an orthographic projection, using the ggplot *coord\_map* and *borders* function. It's not well suited the sort of fine-grained point data we have, however.
+*ggplot* has some limited ability to deal with geographic data. Here are the points from SWB plotted with an orthographic projection, using the ggplot *coord\_map* and *borders* function.
 
 ``` r
 ggplot(SWB, aes(x = lon, y = lat, color = cameo.root )) +
@@ -82,6 +83,8 @@ ggplot(SWB, aes(x = lon, y = lat, color = cameo.root )) +
 ```
 
 ![](Mark_SODA_502_Part_2_files/figure-markdown_github-ascii_identifiers/SWB_map_globe-1.png)
+
+These mostly blank maps are not well suited the sort of fine-grained point data we have, however, since it would be useful to know the cities/towns where the events actually are.
 
 ### Mapping the Google Way
 
@@ -184,7 +187,7 @@ ggmap(geo.map, darken = c(0.6, "white")) +
                      color = cameo.root,
                      shape = cameo.root,
                      size = cameo.root),
-             alpha = .8) + 
+             alpha = .5) + 
      
      # Add size mapping
      scale_size_manual(values = event.size) +
@@ -203,39 +206,6 @@ ggmap(geo.map, darken = c(0.6, "white")) +
 ```
 
 ![](Mark_SODA_502_Part_2_files/figure-markdown_github-ascii_identifiers/GEO_map-1.png)
-
-Cool, now let's get mapping! Note that it is really just like *ggplot*. We also have to add our visual variable mapping separately with specific functions.
-
-``` r
-# call gggeo.map,  tint white
-ggmap(geo.map, darken = c(0.6, "white")) + 
-     
-     # Add points, map to variables
-     geom_point(data = c.subset, 
-               aes(  x = lon,
-                     y = lat,
-                     color = cameo.root,
-                     shape = cameo.root,
-                     size = cameo.root),
-             alpha = .8) + 
-     
-     # Add size mapping
-     scale_size_manual(values = event.size) +
-     
-     # Add color mapping
-     scale_colour_manual(values = event.color) +
-     
-     # Add shape mapping
-     scale_shape_manual(values = event.shape) +
-     
-     # Add label
-     labs( title = paste("SWB", long.name))+
-     
-     # This resent the alpha to make the legend legible
-     guides(color = guide_legend(override.aes = list(alpha = 1)))
-```
-
-![](Mark_SODA_502_Part_2_files/figure-markdown_github-ascii_identifiers/GEO_map_Mean_Center-1.png)
 
 ### Automated Cartography: Looping Maps
 
@@ -268,7 +238,7 @@ for (i in 1:length(countries)){
      c.subset <- SWB %>% filter(countryname == country)
      
      # Get bounding box, fudge factor .4
-     bbox <- make_bbox(lon, lat, c.subset, f = .5)
+     bbox <- make_bbox(lon, lat, c.subset, f = .45)
      
      # Get map for bounding box
      map <- get_map(bbox, color = "bw")
@@ -318,7 +288,7 @@ for (i in 1:length(countries)){
 
     ## converting bounding box to center/zoom specification. (experimental)
 
-    ## Map from URL : http://maps.googleapis.com/maps/api/staticmap?center=40.07325,45.1096&zoom=7&size=640x640&scale=2&maptype=terrain&language=en-EN&sensor=false
+    ## Map from URL : http://maps.googleapis.com/maps/api/staticmap?center=40.07325,45.1096&zoom=8&size=640x640&scale=2&maptype=terrain&language=en-EN&sensor=false
 
 ![](Mark_SODA_502_Part_2_files/figure-markdown_github-ascii_identifiers/Looped_mapping-2.png)
 
@@ -356,28 +326,32 @@ ggmap(aoi.map, darken = c(0.6, "white")) +
                 aes(x = lon,
                     y = lat,
                     shape = "NYT",
-                    color = "NYT")) +
+                    color = "NYT"),
+                alpha = .4) +
      
      # Add SWB points with right color
      geom_point(data = SWB[SWB$cameo.root == "Neutral",], 
                 aes(x = lon,
                     y = lat,
                     shape = "SWB",
-                    color = "SWB")) +
+                    color = "SWB"),
+                alpha = .4) +
      
      # FBIS points with right color
      geom_point(data = FBIS[FBIS$cameo.root == "Neutral",],
                 aes(x = lon,
                     y = lat,
                     shape = "FBIS",
-                    color = "FBIS")) +
+                    color = "FBIS"),
+                alpha = .4) +
      
      # ICEWS: Note cameo field abd location names are different
      geom_point(data = ICEWS[ICEWS$cameo.root == "Neutral",], 
                 aes(x = Longitude,
                     y = Latitude,
                     shape = "ICEWS",
-                    color = "ICEWS")) +
+                    color = "ICEWS"),
+                alpha = .4) +
         
      # Assign source colors, defined earlier
      scale_color_manual(name = "Source", values = source.color ) +
@@ -386,7 +360,10 @@ ggmap(aoi.map, darken = c(0.6, "white")) +
      scale_shape_manual( name = "Source", values = source.shape ) +
      
      # Add label
-     labs( title = "Caucasus Neutral Events by Source" )
+     labs( title = "Caucasus Neutral Events by Source" ) + 
+
+     # This resent the alpha to make the legend legible
+     guides(color = guide_legend(override.aes = list(alpha = 1)))
 ```
 
 ![](Mark_SODA_502_Part_2_files/figure-markdown_github-ascii_identifiers/AOI_event_map-1.png)

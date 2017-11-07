@@ -108,60 +108,14 @@ ICEWS.aoi <- ICEWS %>%
   mutate(date = as.Date(Event.Date )) %>%
   mutate(countryname = countrycode(Country, "country.name", "iso3c"))
 
+# Check data
 head(ICEWS.aoi)
 
-#Check values
-sort(unique(ICEWS.aoi$CAMEO.Code))
-
-#### CAMEO Codes Processing #### 
-
-# Copy over CAMEO codes
-ICEWS.aoi$CAMEO.Code.2 <- as.character(ICEWS.aoi$CAMEO.Code)
-
-head(ICEWS.aoi$CAMEO.Code.2)
-unique(ICEWS.aoi$CAMEO.Code.2)
-
-# Truncate cameo code by 1 if value over 1000
-ICEWS.aoi$CAMEO.Code.2[as.numeric(ICEWS.aoi$CAMEO.Code.2) > 1000] <- 
-  substr(ICEWS.aoi$CAMEO.Code.2[as.numeric(ICEWS.aoi$CAMEO.Code.2) > 1000], 1, 
-         nchar(ICEWS.aoi$CAMEO.Code.2[as.numeric(ICEWS.aoi$CAMEO.Code.2) >= 1000]) - 1)
-
-
-# Truncate cameo code by 1 if value over 100
-ICEWS.aoi$CAMEO.Code.2[as.numeric(ICEWS.aoi$CAMEO.Code.2) > 100] <- 
-  substr(ICEWS.aoi$CAMEO.Code.2[as.numeric(ICEWS.aoi$CAMEO.Code.2) > 100], 1, 
-         nchar(ICEWS.aoi$CAMEO.Code.2[as.numeric(ICEWS.aoi$CAMEO.Code.2) >= 100]) - 1)
-
-# Truncate cameo code by 1 if Cameo.Code.2 value over 20
-ICEWS.aoi$CAMEO.Code.2[as.numeric(ICEWS.aoi$CAMEO.Code.2) > 20] <- 
-  substr(ICEWS.aoi$CAMEO.Code.2[as.numeric(ICEWS.aoi$CAMEO.Code.2) > 20], 1, 
-         nchar(ICEWS.aoi$CAMEO.Code.2[as.numeric(ICEWS.aoi$CAMEO.Code.2) > 20]) - 1)
-
-# Convert to numeric
-ICEWS.aoi$CAMEO.Code.2 <- as.numeric(ICEWS.aoi$CAMEO.Code.2)
-
-head(ICEWS.aoi)
-
-# Check values
-sort(unique(ICEWS.aoi$CAMEO.Code.2))
-
-# Assign Cameo root according to 2-digit code
-ICEWS.aoi$cameo.root <- "Material conflict" 
-ICEWS.aoi$cameo.root[ICEWS.aoi$CAMEO.Code.2 == 16] <- "Verbal conflict" 
-ICEWS.aoi$cameo.root[ICEWS.aoi$CAMEO.two < 14] <- "Verbal conflict" 
-ICEWS.aoi$cameo.root[ICEWS.aoi$CAMEO.Code.2 < 9 ] <- "Material cooperation"
-ICEWS.aoi$cameo.root[ICEWS.aoi$CAMEO.Code.2 < 6 ] <- "Verbal cooperation" 
-ICEWS.aoi$cameo.root[ICEWS.aoi$CAMEO.Code.2 < 3] <- "Neutral" 
-
-unique(ICEWS.aoi$cameo.root)
-head(ICEWS.aoi)
-
-nrow(ICEWS.aoi)
 
 # 30% sample
 ICEWS.sample <- sample_frac(ICEWS.aoi, .3)
 
-write.csv(ICEWS.sample, "Mark Tutorial/Mark-SODA-502-Methods/data/ICEWS.csv",  row.names=FALSE)
+write.csv(ICEWS.sample, "W:/Mark OneDrive/OneDrive/Documents/502 Project Online/Mark Tutorial/Mark-SODA-502-Methods/data/ICEWS.csv",  row.names=FALSE)
 
 
 #### Misc ####
